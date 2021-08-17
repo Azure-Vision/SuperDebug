@@ -2,7 +2,7 @@
 
 ## 使用方法：
 
-准备工作：在需要工程目录下添加debug.py，在其他文件from debug import debug, mark
+准备工作：在需要工程目录下添加debug.py，在其他文件`from debug import debug, mark`
 
 ### 功能1: `debug(var)`
 
