@@ -6,7 +6,10 @@
 
 ### 功能1: `debug(var)`
 
-用黄色字体打印出`var`所在位置、数组（list、numpy的array、torch的tensor）形状及具体值
+用黄色字体打印出（与普通的打印区分）：
+- `var`所在具体行数（command / ctrl + 单击 即可跳转到文件相应位置）
+- 数组形状（限list、numpy的array、torch的tensor）
+- `var`的具体值
 
 进阶功能:
 
