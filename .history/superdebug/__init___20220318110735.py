@@ -106,7 +106,7 @@ def mark(marker=None):
 def logging(*message, end="\n"):
     """同时输出到终端和debug.log"""
     message = " ".join([str(_) for _ in message])
-    if debug_file and not debug_file.closed:
+    if debug_file:
         debug_file.write(message + end)
     if PRINT:
         print_yellow(message, end=end)
