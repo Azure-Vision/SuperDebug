@@ -1,17 +1,17 @@
 [tool.poetry]
 name = "superdebug"
-version = "0.1.1"
+version = "0.1.7"
 description = "Convenient debugging for machine learning projects"
 authors = ["Azure-Vision <hewanrong2001@outlook.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.6"
 mypyc-ipython = "^0.0.2"
-Pillow = "^9.0.1"
-torch = "^1.11.0"
-numpy = "^1.22.3"
-torchvision = "^0.12.0"
+Pillow = "^6.0.0"
+torch = "^1.10.0"
+numpy = "^1.15.0"
+torchvision = "^0.10.0"
 
 [tool.poetry.dev-dependencies]
 
