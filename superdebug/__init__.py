@@ -16,11 +16,13 @@ except:
 ON_DEBUG = True # debug总开关
 PLAIN = False  # 开启则仅普通的打印（至终端或debug.log）
 MAX_LOG = -1  # 0: 不debug, -1: 无限输出 NOTE: 无输出？可能这里设成了0，或者数量不够高、没到需要输出的变量！
-FULL = False  # 是否输出完整的tensor内容，而不用...进行省略
+FULL = False  # 是否输出完整的tensor、string内容，而不用...进行省略
 TO_FILE = True  # 是否写入debug.log
 PRINT = True  # 是否打印至终端
 BUGGY = True  # 便捷地debug（出现bug则进入自动进入调试模式）
-PEEK_LAYER = 0  # 详细打印至第几层，标准为0，建议用3
+PEEK_LAYER = 3  # 详细打印至第几层，不详细打印可使用0，详细打印建议用3
+MAX_PEEK_ITEM = 2 # 详细打印几项，标准为2
+MAX_STR_LEN = 220 # 最长打印的字符串长度
 SAVE_IMAGE_NORM = False # 把tensor保存成图片时是否normalize
 # 控制是否打印细节：debug(True/False, xxx, xxx)，False则只打印形状
 
@@ -40,6 +42,7 @@ os.mkdir(debug_path)
 log_path = os.path.join(debug_path, "debug.log")
 os.system("touch " + log_path)
 image_count = {}
+simple_types = [str, int, float, bool]
 
 
 class ExceptionHook:
@@ -112,54 +115,58 @@ def logging(*message, end="\n"):
         print_yellow(message, end=end)
 
 
-def info(i, name="", detail=True, layer=0):
+def info(var, name="", detail=True, layer=0):
     """递归打印变量"""
-    global PEEK_LAYER
-    sep = "   "
-    if type(i) == int or type(i) == float:
-        logging(sep * layer, name, "num val:", i)
+    space = "   "
+    if type(var) == int or type(var) == float:
+        logging(space * layer, name, "num val:", var)
     else:
-        if type(i) == str:
-            logging(sep * layer, name, "str:", i)
-        elif type(i) == bool:
-            logging(sep * layer, name, "bool:", i)
-
-        elif type(i) == list:
-            logging(sep * layer, name, "list size:", len(i), end="")
-            if layer < PEEK_LAYER and len(i) > 0:
+        if type(var) == str:
+            length = len(var)
+            if not FULL and len(var) >= MAX_STR_LEN:
+                var = var[:MAX_STR_LEN - 20] + " ... " + var[-20:]
+            logging(space * layer, name, "str len", str(length)+":", var)
+        elif type(var) == bool:
+            logging(space * layer, name, "bool:", var)
+        elif type(var) == list:
+            logging(space * layer, name, "list size:", len(var), end="")
+            if layer < PEEK_LAYER and len(var) > 0 and type(var[0]) not in simple_types:
                 logging("")
-                info(i[0], "0th item:", detail, layer + 1)
+                for no, item in enumerate(var[:MAX_PEEK_ITEM]):
+                    info(item, "item " + str(no) + ": ", detail, layer + 1)
+                if len(var) > MAX_PEEK_ITEM:
+                    logging(space * (layer + 1), len(var) - MAX_PEEK_ITEM, "extra items")
             else:
-                logging(" val:", i if detail else "*")
-        elif type(i) == dict:
-            logging(sep * layer, name, "dict with keys", list(i.keys()))
-            for key in i:
-                info(i[key], key, detail, layer + 1)
-        elif type(i) == tuple:
-            logging(sep * layer, name, "tuple size:", len(i), "")
-            if layer < PEEK_LAYER and len(i) > 0:
-                for no, item in enumerate(i):
+                logging(" val:", var if detail else "*")
+        elif type(var) == tuple:
+            logging(space * layer, name, "tuple size:", len(var), "")
+            if layer < PEEK_LAYER and len(var) > 0:
+                for no, item in enumerate(var):
                     info(item, str(no) + ". ", detail, layer + 1)
             else:
-                logging(" val:", i if detail else "*")
-        elif type(i) == torch.Tensor:
-            logging(sep * layer, name, "Tensor size:", i.shape,
-                    "val:", i if detail else "*")
-            print_image(i, name)
+                logging(" val:", var if detail else "*")
+        elif type(var) == dict:
+            logging(space * layer, name, "dict with keys", list(var.keys()))
+            for key in var:
+                info(var[key], key, detail, layer + 1)
+        elif type(var) == torch.Tensor:
+            logging(space * layer, name, "Tensor size:", var.shape,
+                    "val:", var if detail else "*")
+            print_image(var, name)
             
-        elif type(i) == np.ndarray:
-            logging(sep * layer, name, "ndarray size:", i.shape,
-                    "val:", i if detail else "*")
-            print_image(i, name, True)
-        elif type(i) == Image.Image:
-            print_image(i, name)
+        elif type(var) == np.ndarray:
+            logging(space * layer, name, "ndarray size:", var.shape,
+                    "val:", var if detail else "*")
+            print_image(var, name, True)
+        elif type(var) == Image.Image:
+            print_image(var, name)
         else:
             try:
-                j = float(i)
+                j = float(var)
             except Exception:
-                logging(sep * layer, name, str(type(i)) + " with val: ", i)
+                logging(space * layer, name, str(type(var)) + " with val: ", var)
             else:
-                logging(sep * layer, name, "num val:", j, type(i))
+                logging(space * layer, name, "num val:", j, type(var))
 
 
 def debug(*args, **kwargs):
@@ -194,14 +201,14 @@ def debug(*args, **kwargs):
     keys = list(kwargs.keys())
     logging(
         f"DEBUG: {len(args) + len(kwargs)} vars: {['?' for _ in args] + keys}, at {get_pos(level=2)}")
-    for i in args:
+    for var in args:
         logging(f"{count} / {debug_count}.",  end=" ")
-        info(i, detail=detail)
+        info(var, detail=detail)
         debug_count += 1
         count += 1
-    for i in keys:
+    for key in keys:
         logging(f"{count} / {debug_count}.", end=" ")
-        info(kwargs[i], i, detail=detail)
+        info(kwargs[key], key, detail=detail)
         count += 1
         debug_count += 1
     logging("-------------------------------------")
