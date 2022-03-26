@@ -143,7 +143,7 @@ def info(var, name="?", detail=True, layer=0):
         elif type(var) == list:
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "list size:", len(var), end="")
             if layer < PEEK_LAYER and len(var) > 0 and type(var[0]) not in simple_types: # a list of complex variables
-                logging("")
+                logging(" [...]")
                 for no, item in enumerate(var[:MAX_PEEK_ITEM]):
                     info(item, "item " + str(no) + ": ", detail, layer + 1)
                 if len(var) > MAX_PEEK_ITEM:
@@ -157,34 +157,55 @@ def info(var, name="?", detail=True, layer=0):
                     else:
                         logging(" val:", var_str if detail else "*")
                 elif layer < PEEK_LAYER: # variables of different simple types
-                    logging("")
+                    logging(" [...]")
                     for no, item in enumerate(var):
                         info(item, "item " + str(no) + ": ", detail, layer + 1)
                 else:
                     logging(" val:", var_str if detail else "*")
         elif type(var) == tuple:
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "tuple size:", len(var), "")
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "tuple size:", len(var), end="")
             if layer < PEEK_LAYER and len(var) > 0:
+                logging(" (...)")
+                for no, item in enumerate(var):
+                    info(item, "item " + str(no) + ": ", detail, layer + 1)
+            else:
+                logging(" val:", var if detail else "*")
+        elif type(var) == set:
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "set size:", len(var), end="")
+            if layer < PEEK_LAYER and len(var) > 0:
+                logging(" {...}")
                 for no, item in enumerate(var):
                     info(item, "item " + str(no) + ": ", detail, layer + 1)
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == dict:
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "dict with keys", list(var.keys()))
-            for key in var:
-                info(var[key], key, detail, layer + 1)
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "dict {...} with keys", list(var.keys()), end="")
+            if layer < PEEK_LAYER and len(var) > 0:
+                logging("")
+                for key in var:
+                    info(var[key], key, detail, layer + 1)
+            else:
+                logging(" val:", var if detail else "*")
         elif type(var) == OrderedDict:
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "OrderedDict with keys", list(var.keys()))
-            for key in var:
-                info(var[key], key, detail, layer + 1)
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "OrderedDict {...} with keys", list(var.keys()), end="")
+            if layer < PEEK_LAYER and len(var) > 0:
+                logging("")
+                for key in var:
+                    info(var[key], key, detail, layer + 1)
+            else:
+                logging(" val:", var if detail else "*")
         elif type(var) == defaultdict:
             tmp_val = 12341231354124
             assert tmp_val not in var
             default_val = var[tmp_val]
             del var[tmp_val]
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "defaultdict with default", default_val, "keys", list(var.keys()))
-            for key in var:
-                info(var[key], key, detail, layer + 1)
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "defaultdict {...} with default", default_val, "keys", list(var.keys()), end="")
+            if layer < PEEK_LAYER and len(var) > 0:
+                logging("")
+                for key in var:
+                    info(var[key], key, detail, layer + 1)
+            else:
+                logging(" val:", var if detail else "*")
         elif type(var) == torch.Tensor:
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "Tensor size:", var.shape, "val:", var if detail else "*")
             print_image(var, name)
@@ -198,16 +219,14 @@ def info(var, name="?", detail=True, layer=0):
             print_image(var, name)
         else:
             try:
-                j = float(var)
-                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", f"num ({type(var)}) with val:", j, f"({var})")
-            except Exception:
-                try:
-                    props = var.__dict__
-                    logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", str(type(var)), "with props", list(props.keys()))
-                    for key in props:
+                props = var.__dict__
+                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", str(type(var)), "with props", list(props.keys()))
+                for key in props:
+                    if not key.startswith("_"):
                         info(props[key], key, detail, layer + 1)
-                except Exception:
-                    logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", str(type(var)), "with val: ", var)
+            except Exception:
+                var_type = str(type(var))[8:-2]
+                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", var_type, "with val: ", var)
 
 
 def debug(*args, **kwargs):
