@@ -1,2 +1,7 @@
 dist/
 .history/
+tmp/
+tmp.py
+*/__pycache__
+superdebug/__pycache__
+super_debug

@@ -3,7 +3,11 @@ import torch
 try:
     from torchvision.utils import save_image
 except:
-    pass
+    save_image is None
+try:
+    import tensorflow as tf
+except:
+    tf = None
 import numpy as np
 import sys
 import os
@@ -11,7 +15,7 @@ import time
 try:
     from PIL import Image
 except:
-    pass
+    Image = None
 
 # 开关 #################################
 ON_DEBUG = True # debug总开关
@@ -90,24 +94,22 @@ def print_image(tensor, name, is_np = False):
     file_path = os.path.join(debug_path, f"tensor_{debug_count}_{name}_{image_count[name]}.jpg")
     normallized_file_path = os.path.join(debug_path, f"tensor_{debug_count}_{name}_{image_count[name]}_norm.jpg")
     image_count[name] += 1
-    if type(tensor) == Image.Image:
+    if Image is not None and type(tensor) == Image.Image:
         tensor.save(file_path)
     else:
         if is_np:
             tensor = torch.Tensor(tensor)
         normalized_tensor = normalize(tensor)
         try:
-            if SAVE_IMAGE_NORM:
-                save_image(normalized_tensor, normallized_file_path)
-            else:
-                save_image(tensor, file_path)
+            if save_image is not None:
+                if SAVE_IMAGE_NORM:
+                    save_image(normalized_tensor, normallized_file_path)
+                else:
+                    save_image(tensor, file_path)
         except Exception:
             pass
 def mark(marker=None):
-    if marker is not None:
-        print_yellow(marker)
-    else:
-        print_yellow(get_pos(level=2))
+    print("Mark is deprecated. Use debug() instead.")
 
 
 def logging(*message, end="\n"):
@@ -117,24 +119,24 @@ def logging(*message, end="\n"):
         debug_file.write(message + end)
     if PRINT:
         print_yellow(message, end=end)
-logging("------------------", get_time(), "-------------------")
+logging("------------------\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m--", end = "")
 
 
-def info(var, name="", detail=True, layer=0):
+def info(var, name="?", detail=True, layer=0):
     """递归打印变量"""
     space = "   "
     if type(var) == int or type(var) == float:
-        logging(space * layer, name, "num val:", var)
+        logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "num val:", var)
     else:
         if type(var) == str:
             length = len(var)
             if not FULL and len(var) >= MAX_STR_LEN:
                 var = var[:MAX_STR_LEN - 20] + " ... " + var[-20:]
-            logging(space * layer, name, "str len", str(length)+":", var)
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "str len", str(length)+":", var)
         elif type(var) == bool:
-            logging(space * layer, name, "bool:", var)
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "bool:", var)
         elif type(var) == list:
-            logging(space * layer, name, "list size:", len(var), end="")
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "list size:", len(var), end="")
             if layer < PEEK_LAYER and len(var) > 0 and type(var[0]) not in simple_types:
                 logging("")
                 for no, item in enumerate(var[:MAX_PEEK_ITEM]):
@@ -144,34 +146,34 @@ def info(var, name="", detail=True, layer=0):
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == tuple:
-            logging(space * layer, name, "tuple size:", len(var), "")
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "tuple size:", len(var), "")
             if layer < PEEK_LAYER and len(var) > 0:
                 for no, item in enumerate(var):
                     info(item, str(no) + ". ", detail, layer + 1)
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == dict:
-            logging(space * layer, name, "dict with keys", list(var.keys()))
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "dict with keys", list(var.keys()))
             for key in var:
                 info(var[key], key, detail, layer + 1)
         elif type(var) == torch.Tensor:
-            logging(space * layer, name, "Tensor size:", var.shape,
-                    "val:", var if detail else "*")
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "Tensor size:", var.shape, "val:", var if detail else "*")
             print_image(var, name)
-            
         elif type(var) == np.ndarray:
-            logging(space * layer, name, "ndarray size:", var.shape,
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "ndarray size:", var.shape,
                     "val:", var if detail else "*")
             print_image(var, name, True)
-        elif type(var) == Image.Image:
+        elif tf is not None and type(var) == tf.Tensor:
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "Tensor size:", var.shape, "val:", var if detail else "*")
+        elif Image is not None and type(var) == Image.Image:
             print_image(var, name)
         else:
             try:
                 j = float(var)
             except Exception:
-                logging(space * layer, name, str(type(var)) + " with val: ", var)
+                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", str(type(var)) + " with val: ", var)
             else:
-                logging(space * layer, name, "num val:", j, type(var))
+                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "num val:", j, type(var))
 
 
 def debug(*args, **kwargs):
@@ -185,6 +187,7 @@ def debug(*args, **kwargs):
         return 
     if TO_FILE:
         debug_file = open(log_path, "a")
+    logging("--\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m------------------")
     if PLAIN:
         logging(*args, **kwargs, end="\n")
         if TO_FILE:
@@ -204,8 +207,10 @@ def debug(*args, **kwargs):
         detail = args[0]
         args = args[1:]
     keys = list(kwargs.keys())
-    logging(
-        f"DEBUG: {len(args) + len(kwargs)} vars: {['?' for _ in args] + keys}, at {get_pos(level=2)}")
+    if len(args) + len(kwargs) == 0:
+        logging(f"\033[0m\033[1;32mMARK:\033[0m\033[1;33m at \033[0m\033[1;32m{get_pos(level=2)}\033[0m\033[1;33m")
+    else:
+        logging(f"\033[0m\033[1;32mDEBUG:\033[0m\033[1;33m {len(args) + len(kwargs)} vars: {['?' for _ in args] + keys}, at \033[0m\033[1;32m{get_pos(level=2)}\033[0m\033[1;33m")
     for var in args:
         logging(f"{count} / {debug_count}.",  end=" ")
         info(var, detail=detail)
@@ -216,6 +221,6 @@ def debug(*args, **kwargs):
         info(kwargs[key], key, detail=detail)
         count += 1
         debug_count += 1
-    logging("------------------", get_time(), "-------------------")
+    logging("------------------\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m--", end = "")
     if TO_FILE:
         debug_file.close()
