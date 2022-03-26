@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "superdebug"
-version = "0.1.16"
+version = "0.1.18"
 description = "Convenient debugging for machine learning projects"
 authors = ["Azure-Vision <hewanrong2001@outlook.com>"]
 license = "MIT"

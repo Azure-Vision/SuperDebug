@@ -12,6 +12,7 @@ import numpy as np
 import sys
 import os
 import time
+from collections import OrderedDict, defaultdict
 try:
     from PIL import Image
 except:
@@ -154,6 +155,17 @@ def info(var, name="?", detail=True, layer=0):
                 logging(" val:", var if detail else "*")
         elif type(var) == dict:
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "dict with keys", list(var.keys()))
+            for key in var:
+                info(var[key], key, detail, layer + 1)
+        elif type(var) == OrderedDict:
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "OrderedDict with keys", list(var.keys()))
+            for key in var:
+                info(var[key], key, detail, layer + 1)
+        elif type(var) == defaultdict:
+            tmp_val = 12341231354124
+            default_val = var[tmp_val]
+            del var[tmp_val]
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "defaultdict with default", default_val, "keys", list(var.keys()))
             for key in var:
                 info(var[key], key, detail, layer + 1)
         elif type(var) == torch.Tensor:
