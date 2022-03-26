@@ -7,6 +7,7 @@ except:
 import numpy as np
 import sys
 import os
+import time
 try:
     from PIL import Image
 except:
@@ -62,13 +63,16 @@ sys.excepthook = ExceptionHook()
 
 
 def get_pos(level=1, end="\n"):
-    position = """"{}", line {}, in {}""".format(
+    position = """{}:{} {}""".format(
+    # position = """"{}", line {}, in {}""".format(
         sys._getframe(level).f_code.co_filename,  # 当前文件名
         sys._getframe(level).f_lineno,  # 当前行号
         sys._getframe(level).f_code.co_name,  # 当前函数/module名
     )
     return position
 
+def get_time():
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
 def print_yellow(text, end="\n"):
     print(f"\033[1;33m{text}\033[0m", end=end)
@@ -113,6 +117,7 @@ def logging(*message, end="\n"):
         debug_file.write(message + end)
     if PRINT:
         print_yellow(message, end=end)
+logging("------------------", get_time(), "-------------------")
 
 
 def info(var, name="", detail=True, layer=0):
@@ -211,6 +216,6 @@ def debug(*args, **kwargs):
         info(kwargs[key], key, detail=detail)
         count += 1
         debug_count += 1
-    logging("-------------------------------------")
+    logging("------------------", get_time(), "-------------------")
     if TO_FILE:
         debug_file.close()
