@@ -29,7 +29,7 @@ PRINT = True  # 是否打印至终端
 BUGGY = True  # 便捷地debug（出现bug则进入自动进入调试模式）
 PEEK_LAYER = 3  # 详细打印至第几层，不详细打印可使用0，详细打印建议用3
 MAX_PEEK_ITEM = 2 # 详细打印几项，标准为2
-MAX_STR_LEN = 276 # 最长打印的字符串长度
+MAX_STR_LEN = 540 # 最长打印的字符串长度
 SAVE_IMAGE_NORM = False # 把tensor保存成图片时是否normalize
 # 控制是否打印细节：debug(True/False, xxx, xxx)，False则只打印形状
 
@@ -131,7 +131,9 @@ def info(var, name="?", detail=True, layer=0):
     if type(var) == int or type(var) == float:
         logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "num val:", var)
     else:
-        if type(var) == str:
+        if var is None:
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "None")
+        elif type(var) == str:
             length = len(var)
             if not FULL and len(var) >= MAX_STR_LEN:
                 var = var[:MAX_STR_LEN - 20] + " ... " + var[-20:]
@@ -140,24 +142,31 @@ def info(var, name="?", detail=True, layer=0):
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "bool:", var)
         elif type(var) == list:
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "list size:", len(var), end="")
-            if layer < PEEK_LAYER and len(var) > 0 and type(var[0]) not in simple_types:
+            if layer < PEEK_LAYER and len(var) > 0 and type(var[0]) not in simple_types: # a list of complex variables
                 logging("")
                 for no, item in enumerate(var[:MAX_PEEK_ITEM]):
                     info(item, "item " + str(no) + ": ", detail, layer + 1)
                 if len(var) > MAX_PEEK_ITEM:
                     logging(space * (layer + 1), len(var) - MAX_PEEK_ITEM, "extra items")
             else:
-                var_str = str(var)
-                if len(var) > 0 and type(var[0]) in simple_types and len(var_str) >= MAX_STR_LEN + 3 and all([type(var[i]) == type(var[0]) for i in range(len(var))]):
-                    # show_num = len(var_str[:MAX_STR_LEN].split(","))
-                    logging(" val:", f"{var_str[:MAX_STR_LEN]} ... and extra items]" if detail else "*")
+                if len(var) > 0 and type(var[0]) in simple_types and all([type(var[i]) == type(var[0]) for i in range(len(var))]): # a list of variables of the same simple type
+                    var_str = str(var)
+                    if len(var_str) >= MAX_STR_LEN + 3: # too long
+                        # show_num = len(var_str[:MAX_STR_LEN].split(","))
+                        logging(" val:", f"{var_str[:MAX_STR_LEN]} ... and extra items]" if detail else "*")
+                    else:
+                        logging(" val:", var_str if detail else "*")
+                elif layer < PEEK_LAYER: # variables of different simple types
+                    logging("")
+                    for no, item in enumerate(var):
+                        info(item, "item " + str(no) + ": ", detail, layer + 1)
                 else:
                     logging(" val:", var_str if detail else "*")
         elif type(var) == tuple:
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "tuple size:", len(var), "")
             if layer < PEEK_LAYER and len(var) > 0:
                 for no, item in enumerate(var):
-                    info(item, str(no) + ". ", detail, layer + 1)
+                    info(item, "item " + str(no) + ": ", detail, layer + 1)
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == dict:
@@ -170,6 +179,7 @@ def info(var, name="?", detail=True, layer=0):
                 info(var[key], key, detail, layer + 1)
         elif type(var) == defaultdict:
             tmp_val = 12341231354124
+            assert tmp_val not in var
             default_val = var[tmp_val]
             del var[tmp_val]
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "defaultdict with default", default_val, "keys", list(var.keys()))
@@ -189,10 +199,15 @@ def info(var, name="?", detail=True, layer=0):
         else:
             try:
                 j = float(var)
+                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", f"num ({type(var)}) with val:", j, f"({var})")
             except Exception:
-                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", str(type(var)) + " with val: ", var)
-            else:
-                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "num val:", j, type(var))
+                try:
+                    props = var.__dict__
+                    logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", str(type(var)), "with props", list(props.keys()))
+                    for key in props:
+                        info(props[key], key, detail, layer + 1)
+                except Exception:
+                    logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", str(type(var)), "with val: ", var)
 
 
 def debug(*args, **kwargs):
