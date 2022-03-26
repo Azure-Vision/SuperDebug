@@ -12,6 +12,7 @@ import numpy as np
 import sys
 import os
 import time
+import re
 from collections import OrderedDict, defaultdict
 try:
     from PIL import Image
@@ -28,7 +29,7 @@ PRINT = True  # 是否打印至终端
 BUGGY = True  # 便捷地debug（出现bug则进入自动进入调试模式）
 PEEK_LAYER = 3  # 详细打印至第几层，不详细打印可使用0，详细打印建议用3
 MAX_PEEK_ITEM = 2 # 详细打印几项，标准为2
-MAX_STR_LEN = 220 # 最长打印的字符串长度
+MAX_STR_LEN = 276 # 最长打印的字符串长度
 SAVE_IMAGE_NORM = False # 把tensor保存成图片时是否normalize
 # 控制是否打印细节：debug(True/False, xxx, xxx)，False则只打印形状
 
@@ -116,10 +117,11 @@ def mark(marker=None):
 def logging(*message, end="\n"):
     """同时输出到终端和debug.log"""
     message = " ".join([str(_) for _ in message])
-    if debug_file and not debug_file.closed:
-        debug_file.write(message + end)
     if PRINT:
         print_yellow(message, end=end)
+    if debug_file and not debug_file.closed:
+        message = re.sub("\033\[.*?m", "", message)
+        debug_file.write(message + end)
 logging("------------------\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m--", end = "")
 
 
@@ -145,7 +147,12 @@ def info(var, name="?", detail=True, layer=0):
                 if len(var) > MAX_PEEK_ITEM:
                     logging(space * (layer + 1), len(var) - MAX_PEEK_ITEM, "extra items")
             else:
-                logging(" val:", var if detail else "*")
+                var_str = str(var)
+                if len(var) > 0 and type(var[0]) in simple_types and len(var_str) >= MAX_STR_LEN + 3 and all([type(var[i]) == type(var[0]) for i in range(len(var))]):
+                    # show_num = len(var_str[:MAX_STR_LEN].split(","))
+                    logging(" val:", f"{var_str[:MAX_STR_LEN]} ... and extra items]" if detail else "*")
+                else:
+                    logging(" val:", var_str if detail else "*")
         elif type(var) == tuple:
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "tuple size:", len(var), "")
             if layer < PEEK_LAYER and len(var) > 0:
