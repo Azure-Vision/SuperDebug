@@ -1,3 +1,4 @@
+# coding=utf-8
 # from debug import debug, mark
 import torch
 try:
@@ -45,7 +46,7 @@ debug_file = None
 debug_path = "super_debug"
 if os.path.exists(debug_path):
     os.system("rm -r " + debug_path)
-os.mkdir(debug_path)
+os.makedirs(debug_path, exist_ok=True)
 log_path = os.path.join(debug_path, "debug.log")
 os.system("touch " + log_path)
 image_count = {}
@@ -143,7 +144,7 @@ def info(var, name="?", detail=True, layer=0):
         elif type(var) == list:
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "list size:", len(var), end="")
             if layer < PEEK_LAYER and len(var) > 0 and type(var[0]) not in simple_types: # a list of complex variables
-                logging(" [...]")
+                logging(f" [{min(len(var), 3)*'.'}]")
                 for no, item in enumerate(var[:MAX_PEEK_ITEM]):
                     info(item, "item " + str(no) + ": ", detail, layer + 1)
                 if len(var) > MAX_PEEK_ITEM:
@@ -157,7 +158,7 @@ def info(var, name="?", detail=True, layer=0):
                     else:
                         logging(" val:", var_str if detail else "*")
                 elif layer < PEEK_LAYER: # variables of different simple types
-                    logging(" [...]")
+                    logging(f" [{min(len(var), 3)*'.'}]")
                     for no, item in enumerate(var):
                         info(item, "item " + str(no) + ": ", detail, layer + 1)
                 else:
@@ -165,7 +166,7 @@ def info(var, name="?", detail=True, layer=0):
         elif type(var) == tuple:
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "tuple size:", len(var), end="")
             if layer < PEEK_LAYER and len(var) > 0:
-                logging(" (...)")
+                logging(f" ({min(len(var), 3)*'.'})")
                 for no, item in enumerate(var):
                     info(item, "item " + str(no) + ": ", detail, layer + 1)
             else:
@@ -173,13 +174,13 @@ def info(var, name="?", detail=True, layer=0):
         elif type(var) == set:
             logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "set size:", len(var), end="")
             if layer < PEEK_LAYER and len(var) > 0:
-                logging(" {...}")
+                logging(" {" + min(len(var), 3)*'.' + "}")
                 for no, item in enumerate(var):
                     info(item, "item " + str(no) + ": ", detail, layer + 1)
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == dict:
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "dict {...} with keys", list(var.keys()), end="")
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "dict {" + min(len(var), 3)*'.' + "} with keys", list(var.keys()), end="")
             if layer < PEEK_LAYER and len(var) > 0:
                 logging("")
                 for key in var:
@@ -187,7 +188,7 @@ def info(var, name="?", detail=True, layer=0):
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == OrderedDict:
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "OrderedDict {...} with keys", list(var.keys()), end="")
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "OrderedDict {" + min(len(var), 3)*'.' + "} with keys", list(var.keys()), end="")
             if layer < PEEK_LAYER and len(var) > 0:
                 logging("")
                 for key in var:
@@ -199,7 +200,7 @@ def info(var, name="?", detail=True, layer=0):
             assert tmp_val not in var
             default_val = var[tmp_val]
             del var[tmp_val]
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "defaultdict {...} with default", default_val, "keys", list(var.keys()), end="")
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "defaultdict {" + min(len(var), 3)*'.' + "} with default", default_val, "keys", list(var.keys()), end="")
             if layer < PEEK_LAYER and len(var) > 0:
                 logging("")
                 for key in var:
@@ -218,12 +219,19 @@ def info(var, name="?", detail=True, layer=0):
         elif Image is not None and type(var) == Image.Image:
             print_image(var, name)
         else:
+            var_type = str(type(var)).split("'")[1]
             try:
                 props = var.__dict__
-                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", str(type(var)), "with props", list(props.keys()))
+                logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", var_type, "with props", list(props.keys()), end="")
+                prop_valid = False
                 for key in props:
                     if not key.startswith("_"):
+                        if not prop_valid:
+                            prop_valid = True
+                            logging("")
                         info(props[key], key, detail, layer + 1)
+                if not prop_valid:
+                    logging(" val:", var)
             except Exception:
                 var_type = str(type(var))[8:-2]
                 logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", var_type, "with val: ", var)
@@ -239,7 +247,7 @@ def debug(*args, **kwargs):
     if not ON_DEBUG:
         return 
     if TO_FILE:
-        debug_file = open(log_path, "a")
+        debug_file = open(log_path, "a", encoding='utf-8')
     logging("--\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m------------------")
     if PLAIN:
         logging(*args, **kwargs, end="\n")
@@ -262,18 +270,21 @@ def debug(*args, **kwargs):
     keys = list(kwargs.keys())
     if len(args) + len(kwargs) == 0:
         logging(f"\033[0m\033[1;32mMARK:\033[0m\033[1;33m at \033[0m\033[1;32m{get_pos(level=2)}\033[0m\033[1;33m")
+    elif len(args) == 1 and len(kwargs) == 0 and type(args[0]) == str:
+        logging(f"\033[0m\033[1;32mDEBUG:\033[0m\033[1;33m at \033[0m\033[1;32m{get_pos(level=2)}\033[0m\033[1;33m")
+        logging(f"\033[0m\033[1;36m{args[0]}\033[0m\033[1;33m")
     else:
         logging(f"\033[0m\033[1;32mDEBUG:\033[0m\033[1;33m {len(args) + len(kwargs)} vars: {['?' for _ in args] + keys}, at \033[0m\033[1;32m{get_pos(level=2)}\033[0m\033[1;33m")
-    for var in args:
-        logging(f"{count} / {debug_count}.",  end=" ")
-        info(var, detail=detail)
-        debug_count += 1
-        count += 1
-    for key in keys:
-        logging(f"{count} / {debug_count}.", end=" ")
-        info(kwargs[key], key, detail=detail)
-        count += 1
-        debug_count += 1
+        for var in args:
+            logging(f"{count} / {debug_count}.",  end=" ")
+            info(var, detail=detail)
+            debug_count += 1
+            count += 1
+        for key in keys:
+            logging(f"{count} / {debug_count}.", end=" ")
+            info(kwargs[key], key, detail=detail)
+            count += 1
+            debug_count += 1
     logging("------------------\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m--", end = "")
     if TO_FILE:
         debug_file.close()
