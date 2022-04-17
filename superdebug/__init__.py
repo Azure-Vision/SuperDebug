@@ -32,8 +32,6 @@ PEEK_LAYER = 3  # 详细打印至第几层，不详细打印可使用0，详细�
 MAX_PEEK_ITEM = 2 # 详细打印几项，标准为2
 MAX_STR_LEN = 540 # 最长打印的字符串长度，推荐： 540 ，无限大： 9999999999999999
 SAVE_IMAGE_NORM = False # 把tensor保存成图片时是否normalize
-MY_QQ_EMAIL = os.environ["MY_QQ_EMAIL"] # Email address
-MY_QQ_EMAIL_PWD = os.environ["MY_QQ_EMAIL_PWD"] # Password
 # 控制是否打印细节：debug(True/False, xxx, xxx)，False则只打印形状
 
 # 教程 #################################
@@ -43,6 +41,8 @@ MY_QQ_EMAIL_PWD = os.environ["MY_QQ_EMAIL_PWD"] # Password
 
 # 实现 #################################
 
+MY_QQ_EMAIL = os.environ["MY_QQ_EMAIL"] # Email address
+MY_QQ_EMAIL_PWD = os.environ["MY_QQ_EMAIL_PWD"] # Password
 debug_count = 1
 debug_file = None
 debug_path = "super_debug"
