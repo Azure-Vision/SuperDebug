@@ -1,5 +1,5 @@
 # coding=utf-8
-# from debug import debug, mark
+# from superdebug import debug, mail
 import torch
 try:
     from torchvision.utils import save_image
@@ -30,8 +30,10 @@ PRINT = True  # 是否打印至终端
 BUGGY = True  # 便捷地debug（出现bug则进入自动进入调试模式）
 PEEK_LAYER = 3  # 详细打印至第几层，不详细打印可使用0，详细打印建议用3
 MAX_PEEK_ITEM = 2 # 详细打印几项，标准为2
-MAX_STR_LEN = 540 # 最长打印的字符串长度
+MAX_STR_LEN = 540 # 最长打印的字符串长度，推荐： 540 ，无限大： 9999999999999999
 SAVE_IMAGE_NORM = False # 把tensor保存成图片时是否normalize
+MY_QQ_EMAIL = os.environ["MY_QQ_EMAIL"] # Email address
+MY_QQ_EMAIL_PWD = os.environ["MY_QQ_EMAIL_PWD"] # Password
 # 控制是否打印细节：debug(True/False, xxx, xxx)，False则只打印形状
 
 # 教程 #################################
@@ -123,7 +125,7 @@ def logging(*message, end="\n"):
     if debug_file and not debug_file.closed:
         message = re.sub("\033\[.*?m", "", message)
         debug_file.write(message + end)
-logging("------------------\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m--", end = "")
+logging("------------------\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m------------------")
 
 
 def info(var, name="?", detail=True, layer=0):
@@ -150,8 +152,8 @@ def info(var, name="?", detail=True, layer=0):
                 if len(var) > MAX_PEEK_ITEM:
                     logging(space * (layer + 1), len(var) - MAX_PEEK_ITEM, "extra items")
             else:
+                var_str = str(var)
                 if len(var) > 0 and type(var[0]) in simple_types and all([type(var[i]) == type(var[0]) for i in range(len(var))]): # a list of variables of the same simple type
-                    var_str = str(var)
                     if len(var_str) >= MAX_STR_LEN + 3: # too long
                         # show_num = len(var_str[:MAX_STR_LEN].split(","))
                         logging(" val:", f"{var_str[:MAX_STR_LEN]} ... and extra items]" if detail else "*")
@@ -180,18 +182,28 @@ def info(var, name="?", detail=True, layer=0):
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == dict:
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "dict {" + min(len(var), 3)*'.' + "} with keys", list(var.keys()), end="")
+            dict_keys = list(var.keys())
+            dict_end = ""
+            if len(dict_keys) >= 100:
+                dict_keys = dict_keys[:100]
+                dict_end = "... and extra items]"
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "dict {" + min(len(var), 3)*'.' + "} " + f"with {len(dict_keys)} keys", dict_keys, end=dict_end)
             if layer < PEEK_LAYER and len(var) > 0:
                 logging("")
-                for key in var:
+                for key in dict_keys:
                     info(var[key], key, detail, layer + 1)
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == OrderedDict:
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "OrderedDict {" + min(len(var), 3)*'.' + "} with keys", list(var.keys()), end="")
+            dict_keys = list(var.keys())
+            dict_end = ""
+            if len(dict_keys) >= 100:
+                dict_keys = dict_keys[:100]
+                dict_end = "... and extra items]"
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "OrderedDict {" + min(len(var), 3)*'.' + "} " + f"with {len(dict_keys)} keys", dict_keys, end=dict_end)
             if layer < PEEK_LAYER and len(var) > 0:
                 logging("")
-                for key in var:
+                for key in dict_keys:
                     info(var[key], key, detail, layer + 1)
             else:
                 logging(" val:", var if detail else "*")
@@ -200,10 +212,17 @@ def info(var, name="?", detail=True, layer=0):
             assert tmp_val not in var
             default_val = var[tmp_val]
             del var[tmp_val]
-            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "defaultdict {" + min(len(var), 3)*'.' + "} with default", default_val, "keys", list(var.keys()), end="")
+
+            dict_keys = list(var.keys())
+            dict_end = ""
+            if len(dict_keys) >= 100:
+                dict_keys = dict_keys[:100]
+                dict_end = "... and extra items]"
+
+            logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", "defaultdict {" + min(len(var), 3)*'.' + "} with default", default_val, f"{len(dict_keys)} keys", dict_keys, end=dict_end)
             if layer < PEEK_LAYER and len(var) > 0:
                 logging("")
-                for key in var:
+                for key in dict_keys:
                     info(var[key], key, detail, layer + 1)
             else:
                 logging(" val:", var if detail else "*")
@@ -221,6 +240,8 @@ def info(var, name="?", detail=True, layer=0):
         else:
             var_type = str(type(var)).split("'")[1]
             try:
+                if layer >= PEEK_LAYER:
+                    raise Exception("Too many layers")
                 props = var.__dict__
                 logging(space * layer, f"\033[0m\033[1;36m{name}\033[0m\033[1;33m", var_type, "with props", list(props.keys()), end="")
                 prop_valid = False
@@ -247,11 +268,14 @@ def debug(*args, **kwargs):
     if not ON_DEBUG:
         return 
     if TO_FILE:
-        debug_file = open(log_path, "a", encoding='utf-8')
-    logging("--\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m------------------")
+        try:
+            debug_file = open(log_path, "a", encoding='utf-8')
+        except:
+            debug_file = None
+    logging("------------------\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m------------------")
     if PLAIN:
         logging(*args, **kwargs, end="\n")
-        if TO_FILE:
+        if TO_FILE and debug_file is not None:
             debug_file.close()
         return
     global FULL
@@ -285,6 +309,20 @@ def debug(*args, **kwargs):
             info(kwargs[key], key, detail=detail)
             count += 1
             debug_count += 1
-    logging("------------------\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m--", end = "")
-    if TO_FILE:
+    logging("------------------\033[0m\033[1;31m", get_time(), "\033[0m\033[1;33m------------------")
+    if TO_FILE and debug_file is not None:
         debug_file.close()
+
+def mail(subject = "Progress Notification", message = "This is your progress notification."):
+    from email.mime.text import MIMEText
+    mail = MIMEText(message)
+    mail['Subject'] = subject
+    mail['From'] = MY_QQ_EMAIL
+    mail['To'] = MY_QQ_EMAIL
+
+    import smtplib
+    smtp=smtplib.SMTP()
+    smtp.connect('smtp.qq.com', 25)
+    smtp.login(MY_QQ_EMAIL, MY_QQ_EMAIL_PWD)
+
+    smtp.sendmail(MY_QQ_EMAIL, MY_QQ_EMAIL, mail.as_string()) # To是接收邮箱

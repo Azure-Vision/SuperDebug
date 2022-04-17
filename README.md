@@ -4,7 +4,7 @@
 
 `pip install superdebug`
 
-`from superdebug import debug, mark`
+`from superdebug import debug, mail`
 
 ### 功能1: `debug(var)`
 
