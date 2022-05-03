@@ -5,10 +5,12 @@ try:
     from torchvision.utils import save_image
 except:
     save_image is None
-try:
-    import tensorflow as tf
-except:
-    tf = None
+tf = None
+if False:
+    try:
+        import tensorflow as tf
+    except:
+        pass
 import numpy as np
 import sys
 import os
@@ -25,11 +27,11 @@ ON_DEBUG = True # debug总开关
 PLAIN = False  # 开启则仅普通的打印（至终端或debug.log）
 MAX_LOG = -1  # 0: 不debug, -1: 无限输出 NOTE: 无输出？可能这里设成了0，或者数量不够高、没到需要输出的变量！
 FULL = False  # 是否输出完整的tensor、string内容，而不用...进行省略
-TO_FILE = True  # 是否写入debug.log
+TO_FILE = False  # 是否写入debug.log
 PRINT = True  # 是否打印至终端
 BUGGY = True  # 便捷地debug（出现bug则进入自动进入调试模式）
 PEEK_LAYER = 3  # 详细打印至第几层，不详细打印可使用0，详细打印建议用3
-MAX_PEEK_ITEM = 2 # 详细打印几项，标准为2
+MAX_PEEK_ITEM = 3 # 详细打印几项，标准为2
 MAX_STR_LEN = 540 # 最长打印的字符串长度，推荐： 540 ，无限大： 9999999999999999
 SAVE_IMAGE_NORM = False # 把tensor保存成图片时是否normalize
 # 控制是否打印细节：debug(True/False, xxx, xxx)，False则只打印形状
@@ -40,9 +42,12 @@ SAVE_IMAGE_NORM = False # 把tensor保存成图片时是否normalize
 # 功能3: 在出错时跳至ipdb界面，便捷debug
 
 # 实现 #################################
+try:
+    MY_QQ_EMAIL = os.environ["MY_QQ_EMAIL"] # Email address
+    MY_QQ_EMAIL_PWD = os.environ["MY_QQ_EMAIL_PWD"] # Password
+except:
+    print("为了使用邮件提醒功能，请设置环境变量MY_QQ_EMAIL（QQ邮箱地址）与MY_QQ_EMAIL_PWD（QQ邮箱授权码）")
 
-MY_QQ_EMAIL = os.environ["MY_QQ_EMAIL"] # Email address
-MY_QQ_EMAIL_PWD = os.environ["MY_QQ_EMAIL_PWD"] # Password
 debug_count = 1
 debug_file = None
 debug_path = "super_debug"
@@ -182,7 +187,7 @@ def info(var, name="?", detail=True, layer=0):
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == dict:
-            dict_keys = list(var.keys())
+            dict_keys = sorted(list(var.keys()))
             dict_end = ""
             if len(dict_keys) >= 100:
                 dict_keys = dict_keys[:100]
@@ -195,7 +200,7 @@ def info(var, name="?", detail=True, layer=0):
             else:
                 logging(" val:", var if detail else "*")
         elif type(var) == OrderedDict:
-            dict_keys = list(var.keys())
+            dict_keys = sorted(list(var.keys()))
             dict_end = ""
             if len(dict_keys) >= 100:
                 dict_keys = dict_keys[:100]
@@ -213,7 +218,7 @@ def info(var, name="?", detail=True, layer=0):
             default_val = var[tmp_val]
             del var[tmp_val]
 
-            dict_keys = list(var.keys())
+            dict_keys = sorted(list(var.keys()))
             dict_end = ""
             if len(dict_keys) >= 100:
                 dict_keys = dict_keys[:100]
@@ -313,8 +318,10 @@ def debug(*args, **kwargs):
     if TO_FILE and debug_file is not None:
         debug_file.close()
 
-def mail(subject = "Progress Notification", message = "This is your progress notification."):
+def mail(subject = "Progress Notification", message = ""):
     from email.mime.text import MIMEText
+    subject = f"[SUPERDEBUG] {subject}"
+    message = f"{message}\nThis email is sent at   {get_pos(level=2)}"
     mail = MIMEText(message)
     mail['Subject'] = subject
     mail['From'] = MY_QQ_EMAIL

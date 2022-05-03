@@ -1,5 +1,4 @@
 from collections import OrderedDict, defaultdict
-print("为了使用邮件系统，请设置环境变量MY_QQ_EMAIL（QQ邮箱地址）与MY_QQ_EMAIL_PWD（QQ邮箱授权码）")
 from superdebug import debug
 import time
 
